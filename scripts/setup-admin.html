@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Guardian - Admin Setup</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: #fff;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2rem;
+    }
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 30px;
+    }
+    .card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .card h2 {
+      margin-bottom: 20px;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .step-number {
+      background: #3b82f6;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #ccc;
+      font-size: 0.9rem;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      border-color: #3b82f6;
+    }
+    input::placeholder {
+      color: #666;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #2563eb;
+    }
+    .btn-primary:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #ccc;
+      margin-top: 10px;
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.2);
+    }
+    .status {
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      display: none;
+    }
+    .status.show { display: block; }
+    .status.success {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid #10b981;
+      color: #10b981;
+    }
+    .status.error {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid #ef4444;
+      color: #ef4444;
+    }
+    .status.info {
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid #3b82f6;
+      color: #93c5fd;
+    }
+    .loader {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 0.8s linear infinite;
+      margin-right: 10px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .note {
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: #fbbf24;
+    }
+    .checklist {
+      list-style: none;
+      margin-top: 15px;
+    }
+    .checklist li {
+      padding: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .checklist li:last-child {
+      border-bottom: none;
+    }
+    .check-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    .check-icon.pending {
+      background: rgba(255,255,255,0.1);
+      color: #666;
+    }
+    .check-icon.done {
+      background: #10b981;
+      color: white;
+    }
+    .check-icon.error {
+      background: #ef4444;
+      color: white;
+    }
+    code {
+      background: rgba(0,0,0,0.3);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚛 Fleet Guardian AI</h1>
+    <p class="subtitle">Admin Setup Wizard</p>
+
+    <!-- Step 1: Firebase Config -->
+    <div class="card" id="step1">
+      <h2><span class="step-number">1</span> Firebase Connection</h2>
+      <p style="color: #888; margin-bottom: 20px;">Enter your Firebase project details from the Firebase Console.</p>
+      
+      <div class="form-group">
+        <label>API Key</label>
+        <input type="text" id="apiKey" placeholder="AIzaSy..." value="AIzaSyDUC6l0KpLqUfKjE1B8Y9VAGYh9DRq1p58">
+      </div>
+      <div class="form-group">
+        <label>Auth Domain</label>
+        <input type="text" id="authDomain" placeholder="your-project.firebaseapp.com" value="fleet-vehichle-freelancing.firebaseapp.com">
+      </div>
+      <div class="form-group">
+        <label>Project ID</label>
+        <input type="text" id="projectId" placeholder="your-project-id" value="fleet-vehichle-freelancing">
+      </div>
+      
+      <button class="btn-primary" onclick="testConnection()">
+        <span id="connectLoader" class="loader hidden"></span>
+        <span id="connectText">Test Connection</span>
+      </button>
+      
+      <div id="connectionStatus" class="status"></div>
+    </div>
+
+    <!-- Step 2: Create Admin User -->
+    <div class="card" id="step2">
+      <h2><span class="step-number">2</span> Create Admin User</h2>
+      <p style="color: #888; margin-bottom: 20px;">This will create your first admin account.</p>
+      
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="adminEmail" placeholder="admin@yourcompany.com">
+      </div>
+      <div class="form-group">
+        <label>Password (min 6 characters)</label>
+        <input type="password" id="adminPassword" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="adminName" placeholder="System Administrator">
+      </div>
+      <div class="form-group">
+        <label>Phone (optional)</label>
+        <input type="tel" id="adminPhone" placeholder="+91 98765 43210">
+      </div>
+      
+      <button class="btn-primary" id="createBtn" onclick="createAdmin()">
+        <span id="createLoader" class="loader hidden"></span>
+        <span id="createText">Create Admin Account</span>
+      </button>
+      
+      <div id="createStatus" class="status"></div>
+    </div>
+
+    <!-- Step 3: Add Sample Vehicles -->
+    <div class="card" id="step3">
+      <h2><span class="step-number">3</span> Initialize Sample Data (Optional)</h2>
+      <p style="color: #888; margin-bottom: 20px;">Add sample vehicles to get started quickly.</p>
+      
+      <button class="btn-secondary" onclick="addSampleVehicles()">
+        <span id="sampleLoader" class="loader hidden"></span>
+        <span id="sampleText">Add 5 Sample Vehicles</span>
+      </button>
+      
+      <div id="sampleStatus" class="status"></div>
+    </div>
+
+    <!-- Summary -->
+    <div class="card" id="summary" style="display: none;">
+      <h2>✅ Setup Complete!</h2>
+      <ul class="checklist">
+        <li>
+          <span class="check-icon done">✓</span>
+          <span>Firebase connected</span>
+        </li>
+        <li>
+          <span class="check-icon done">✓</span>
+          <span>Admin user created</span>
+        </li>
+        <li id="sampleCheck" class="hidden">
+          <span class="check-icon done">✓</span>
+          <span>Sample vehicles added</span>
+        </li>
+      </ul>
+      
+      <div class="note" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); color: #10b981;">
+        <strong>🎉 You're all set!</strong><br><br>
+        You can now close this page and login to Fleet Guardian AI with your admin credentials.
+      </div>
+      
+      <button class="btn-success" onclick="window.location.href='http://localhost:8080'" style="margin-top: 20px;">
+        Open Fleet Guardian AI →
+      </button>
+    </div>
+
+    <div class="note">
+      <strong>⚠️ Important:</strong><br>
+      • Make sure Firebase Authentication (Email/Password) is enabled<br>
+      • Make sure Firestore Database is created<br>
+      • Run this script only once to create the initial admin
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+    import { getFirestore, doc, setDoc, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    
+    let app, auth, db;
+    let isConnected = false;
+    
+    // Expose functions globally
+    window.testConnection = async function() {
+      const btn = document.getElementById('connectLoader');
+      const text = document.getElementById('connectText');
+      const status = document.getElementById('connectionStatus');
+      
+      btn.classList.remove('hidden');
+      text.textContent = 'Connecting...';
+      
+      try {
+        const config = {
+          apiKey: document.getElementById('apiKey').value.trim(),
+          authDomain: document.getElementById('authDomain').value.trim(),
+          projectId: document.getElementById('projectId').value.trim(),
+        };
+        
+        if (!config.apiKey || !config.authDomain || !config.projectId) {
+          throw new Error('Please fill in all Firebase configuration fields');
+        }
+        
+        app = initializeApp(config);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        
+        // Test by checking if we can reach Firestore
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        isConnected = true;
+        status.className = 'status show success';
+        status.innerHTML = '✅ Connected to Firebase successfully!';
+        text.textContent = 'Connected!';
+        
+      } catch (error) {
+        status.className = 'status show error';
+        status.innerHTML = '❌ ' + error.message;
+        text.textContent = 'Test Connection';
+      }
+      
+      btn.classList.add('hidden');
+    };
+    
+    window.createAdmin = async function() {
+      if (!isConnected) {
+        alert('Please test the Firebase connection first!');
+        return;
+      }
+      
+      const btn = document.getElementById('createLoader');
+      const text = document.getElementById('createText');
+      const status = document.getElementById('createStatus');
+      
+      const email = document.getElementById('adminEmail').value.trim();
+      const password = document.getElementById('adminPassword').value;
+      const name = document.getElementById('adminName').value.trim() || 'System Administrator';
+      const phone = document.getElementById('adminPhone').value.trim();
+      
+      if (!email || !password) {
+        status.className = 'status show error';
+        status.innerHTML = '❌ Please enter email and password';
+        return;
+      }
+      
+      if (password.length < 6) {
+        status.className = 'status show error';
+        status.innerHTML = '❌ Password must be at least 6 characters';
+        return;
+      }
+      
+      btn.classList.remove('hidden');
+      text.textContent = 'Creating account...';
+      
+      try {
+        // Create auth user
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Create Firestore profile
+        await setDoc(doc(db, 'users', user.uid), {
+          email: email,
+          name: name,
+          phone: phone || null,
+          role: 'admin',
+          avatar: null,
+          department: 'Administration',
+          createdAt: serverTimestamp(),
+          lastLogin: serverTimestamp(),
+          settings: {
+            notifications: true,
+            twoFactorEnabled: false,
+            theme: 'dark'
+          }
+        });
+        
+        status.className = 'status show success';
+        status.innerHTML = `✅ Admin account created!<br><br>
+          <strong>Email:</strong> ${email}<br>
+          <strong>UID:</strong> <code>${user.uid}</code>`;
+        text.textContent = 'Account Created!';
+        
+        document.getElementById('createBtn').disabled = true;
+        document.getElementById('summary').style.display = 'block';
+        
+      } catch (error) {
+        let message = error.message;
+        if (error.code === 'auth/email-already-in-use') {
+          message = 'This email is already registered. Try logging in instead.';
+        } else if (error.code === 'auth/weak-password') {
+          message = 'Password is too weak. Use at least 6 characters.';
+        } else if (error.code === 'auth/invalid-email') {
+          message = 'Invalid email address format.';
+        }
+        
+        status.className = 'status show error';
+        status.innerHTML = '❌ ' + message;
+        text.textContent = 'Create Admin Account';
+      }
+      
+      btn.classList.add('hidden');
+    };
+    
+    window.addSampleVehicles = async function() {
+      if (!isConnected) {
+        alert('Please test the Firebase connection first!');
+        return;
+      }
+      
+      const btn = document.getElementById('sampleLoader');
+      const text = document.getElementById('sampleText');
+      const status = document.getElementById('sampleStatus');
+      
+      btn.classList.remove('hidden');
+      text.textContent = 'Adding vehicles...';
+      
+      const sampleVehicles = [
+        {
+          name: 'TRK-001',
+          type: 'truck',
+          licensePlate: 'KA 01 AB 1234',
+          make: 'Tata',
+          model: 'Prima 4928.S',
+          year: 2022,
+          status: 'operational',
+          healthScore: 92,
+          mileage: 45230,
+          fuelEfficiency: 4.2,
+          driver: 'Rajesh Kumar',
+          location: { lat: 12.9716, lng: 77.5946 },
+          sensors: {
+            engineTemp: 85,
+            oilPressure: 45,
+            tirePressure: { fl: 100, fr: 100, rl: 95, rr: 95 },
+            batteryVoltage: 12.6,
+            fuelLevel: 75
+          }
+        },
+        {
+          name: 'TRK-002',
+          type: 'truck',
+          licensePlate: 'KA 02 CD 5678',
+          make: 'Ashok Leyland',
+          model: 'Captain 2523',
+          year: 2021,
+          status: 'warning',
+          healthScore: 78,
+          mileage: 67890,
+          fuelEfficiency: 3.8,
+          driver: 'Suresh Patel',
+          location: { lat: 13.0827, lng: 80.2707 },
+          sensors: {
+            engineTemp: 95,
+            oilPressure: 38,
+            tirePressure: { fl: 95, fr: 92, rl: 88, rr: 90 },
+            batteryVoltage: 12.2,
+            fuelLevel: 45
+          }
+        },
+        {
+          name: 'VAN-001',
+          type: 'van',
+          licensePlate: 'MH 12 EF 9012',
+          make: 'Mahindra',
+          model: 'Supro Profit Truck',
+          year: 2023,
+          status: 'operational',
+          healthScore: 95,
+          mileage: 12450,
+          fuelEfficiency: 12.5,
+          driver: 'Amit Singh',
+          location: { lat: 19.0760, lng: 72.8777 },
+          sensors: {
+            engineTemp: 78,
+            oilPressure: 50,
+            tirePressure: { fl: 105, fr: 105, rl: 100, rr: 100 },
+            batteryVoltage: 12.8,
+            fuelLevel: 90
+          }
+        },
+        {
+          name: 'BUS-001',
+          type: 'bus',
+          licensePlate: 'TN 01 GH 3456',
+          make: 'Volvo',
+          model: '9400XL',
+          year: 2020,
+          status: 'critical',
+          healthScore: 45,
+          mileage: 234500,
+          fuelEfficiency: 3.2,
+          driver: 'Venkat Rao',
+          location: { lat: 13.0827, lng: 80.2707 },
+          sensors: {
+            engineTemp: 105,
+            oilPressure: 28,
+            tirePressure: { fl: 85, fr: 82, rl: 78, rr: 80 },
+            batteryVoltage: 11.8,
+            fuelLevel: 25
+          }
+        },
+        {
+          name: 'CAR-001',
+          type: 'car',
+          licensePlate: 'DL 01 IJ 7890',
+          make: 'Maruti Suzuki',
+          model: 'Dzire',
+          year: 2023,
+          status: 'maintenance',
+          healthScore: 60,
+          mileage: 8900,
+          fuelEfficiency: 22.0,
+          driver: 'Priya Sharma',
+          location: { lat: 28.6139, lng: 77.2090 },
+          sensors: {
+            engineTemp: 0,
+            oilPressure: 0,
+            tirePressure: { fl: 100, fr: 100, rl: 100, rr: 100 },
+            batteryVoltage: 12.4,
+            fuelLevel: 50
+          }
+        }
+      ];
+      
+      try {
+        for (const vehicle of sampleVehicles) {
+          await addDoc(collection(db, 'vehicles'), {
+            ...vehicle,
+            createdAt: serverTimestamp(),
+            lastUpdated: serverTimestamp()
+          });
+        }
+        
+        status.className = 'status show success';
+        status.innerHTML = '✅ Added 5 sample vehicles to your fleet!';
+        text.textContent = 'Vehicles Added!';
+        
+        document.getElementById('sampleCheck').classList.remove('hidden');
+        
+      } catch (error) {
+        status.className = 'status show error';
+        status.innerHTML = '❌ ' + error.message;
+        text.textContent = 'Add 5 Sample Vehicles';
+      }
+      
+      btn.classList.add('hidden');
+    };
+  </script>
+</body>
+</html>
