@@ -72,7 +72,7 @@ class AIService {
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'llama3-70b-8192',
+          model: import.meta.env.VITE_GROQ_MODEL || 'llama-3.3-70b-versatile',
           messages: messages,
           temperature: 0.7,
           max_tokens: 1024,
