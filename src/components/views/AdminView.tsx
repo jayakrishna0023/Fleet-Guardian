@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { Button } from '@/components/ui/button';
+import { DatabaseTestPanel } from '@/components/admin/DatabaseTestPanel';
 import { 
   Users, 
   Car, 
@@ -20,13 +21,15 @@ import {
   Calendar,
   BarChart3,
   Activity,
-  MapPin
+  MapPin,
+  Loader2,
+  Database
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format } from 'date-fns';
 import { UserRole } from '@/types/auth';
 
-type AdminTab = 'users' | 'vehicles' | 'stats';
+type AdminTab = 'users' | 'vehicles' | 'stats' | 'tests';
 
 export const AdminView = () => {
   const { user, getAllUsers, approveUser, rejectUser, updateUserRole } = useAuth();
@@ -36,6 +39,76 @@ export const AdminView = () => {
   const [userFilter, setUserFilter] = useState<string>('all');
   const [vehicleFilter, setVehicleFilter] = useState<string>('pending');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loadingUsers, setLoadingUsers] = useState<Set<string>>(new Set());
+  const [loadingVehicles, setLoadingVehicles] = useState<Set<string>>(new Set());
+
+  const handleApproveUser = async (userId: string) => {
+    console.log('🔵 BUTTON CLICKED: handleApproveUser called with userId:', userId);
+    setLoadingUsers(prev => new Set(prev).add(userId));
+    try {
+      await approveUser(userId);
+      console.log('User approved successfully:', userId);
+    } catch (error) {
+      console.error('Failed to approve user:', error);
+    } finally {
+      setLoadingUsers(prev => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+    }
+  };
+
+  const handleRejectUser = async (userId: string) => {
+    console.log('🔴 BUTTON CLICKED: handleRejectUser called with userId:', userId);
+    setLoadingUsers(prev => new Set(prev).add(userId));
+    try {
+      await rejectUser(userId);
+      console.log('User rejected successfully:', userId);
+    } catch (error) {
+      console.error('Failed to reject user:', error);
+    } finally {
+      setLoadingUsers(prev => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+    }
+  };
+
+  const handleApproveVehicle = async (requestId: string) => {
+    console.log('🚗 BUTTON CLICKED: handleApproveVehicle called with requestId:', requestId);
+    setLoadingVehicles(prev => new Set(prev).add(requestId));
+    try {
+      await approveVehicleRequest(requestId);
+      console.log('Vehicle approved successfully:', requestId);
+    } catch (error) {
+      console.error('Failed to approve vehicle:', error);
+    } finally {
+      setLoadingVehicles(prev => {
+        const next = new Set(prev);
+        next.delete(requestId);
+        return next;
+      });
+    }
+  };
+
+  const handleRejectVehicle = async (requestId: string) => {
+    console.log('🚫 BUTTON CLICKED: handleRejectVehicle called with requestId:', requestId);
+    setLoadingVehicles(prev => new Set(prev).add(requestId));
+    try {
+      await rejectVehicleRequest(requestId);
+      console.log('Vehicle rejected successfully:', requestId);
+    } catch (error) {
+      console.error('Failed to reject vehicle:', error);
+    } finally {
+      setLoadingVehicles(prev => {
+        const next = new Set(prev);
+        next.delete(requestId);
+        return next;
+      });
+    }
+  };
 
   const users = getAllUsers();
   const pendingUsers = users.filter(u => u.status === 'pending');
@@ -188,7 +261,22 @@ export const AdminView = () => {
           <BarChart3 className="w-4 h-4" />
           User Statistics
         </button>
+        <button
+          onClick={() => setActiveTab('tests')}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all',
+            activeTab === 'tests' 
+              ? 'bg-primary text-primary-foreground' 
+              : 'text-muted-foreground hover:bg-secondary'
+          )}
+        >
+          <Database className="w-4 h-4" />
+          Database Tests
+        </button>
       </div>
+
+      {/* Database Tests Tab */}
+      {activeTab === 'tests' && <DatabaseTestPanel />}
 
       {/* User Statistics Tab */}
       {activeTab === 'stats' && (
@@ -422,18 +510,28 @@ export const AdminView = () => {
                                 size="sm"
                                 variant="outline"
                                 className="text-success border-success/30 hover:bg-success/10"
-                                onClick={() => approveUser(u.id)}
+                                onClick={() => handleApproveUser(u.id)}
+                                disabled={loadingUsers.has(u.id)}
                               >
-                                <UserCheck className="w-4 h-4 mr-1" />
+                                {loadingUsers.has(u.id) ? (
+                                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                ) : (
+                                  <UserCheck className="w-4 h-4 mr-1" />
+                                )}
                                 Approve
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                                onClick={() => rejectUser(u.id)}
+                                onClick={() => handleRejectUser(u.id)}
+                                disabled={loadingUsers.has(u.id)}
                               >
-                                <UserX className="w-4 h-4 mr-1" />
+                                {loadingUsers.has(u.id) ? (
+                                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                ) : (
+                                  <UserX className="w-4 h-4 mr-1" />
+                                )}
                                 Reject
                               </Button>
                             </>
@@ -524,18 +622,28 @@ export const AdminView = () => {
                     <Button
                       size="sm"
                       className="flex-1 bg-success hover:bg-success/90"
-                      onClick={() => approveVehicleRequest(request.id)}
+                      onClick={() => handleApproveVehicle(request.id)}
+                      disabled={loadingVehicles.has(request.id)}
                     >
-                      <CheckCircle className="w-4 h-4 mr-1" />
+                      {loadingVehicles.has(request.id) ? (
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      ) : (
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                      )}
                       Approve
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                      onClick={() => rejectVehicleRequest(request.id)}
+                      onClick={() => handleRejectVehicle(request.id)}
+                      disabled={loadingVehicles.has(request.id)}
                     >
-                      <XCircle className="w-4 h-4 mr-1" />
+                      {loadingVehicles.has(request.id) ? (
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      ) : (
+                        <XCircle className="w-4 h-4 mr-1" />
+                      )}
                       Reject
                     </Button>
                   </div>

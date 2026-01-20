@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useCallback, ReactNode, useEffect 
 import { User, AuthState, LoginCredentials, RegisterData, UserRole, UserStatus } from '@/types/auth';
 import { firebaseAuthService, UserProfile } from '@/services/firebaseAuth';
 import { isFirebaseConfigured } from '@/config/firebase';
+import { sessionManager } from '@/services/sessionManager';
+import { sendWelcomeEmail } from '@/services/emailService';
 
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; message: string }>;
@@ -135,9 +137,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               lastLogin: profile.lastLogin,
               loginCount: profile.loginCount,
             };
-            // Store user in localStorage for consistent access across the app
-            localStorage.setItem('fleetai_user', JSON.stringify(user));
-            localStorage.setItem('fleet_user', JSON.stringify(user));
+            // Create secure session
+            sessionManager.createSession({
+              userId: user.id,
+              email: user.email,
+              name: user.name,
+              role: user.role,
+              status: user.status,
+            });
             setAuthState({
               user,
               isAuthenticated: true,
@@ -161,23 +168,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       return () => unsubscribe();
     } else {
-      // Local mock auth - check localStorage
-      const storedUser = localStorage.getItem('fleetai_user');
-      if (storedUser) {
-        try {
-          const user = JSON.parse(storedUser);
-          setAuthState({
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-        } catch {
-          localStorage.removeItem('fleetai_user');
-          setAuthState(prev => ({ ...prev, isLoading: false }));
-        }
-      } else {
-        setAuthState(prev => ({ ...prev, isLoading: false }));
-      }
+      // Local mock auth - no auto-login, require manual login
+      setAuthState(prev => ({ ...prev, isLoading: false }));
     }
   }, [isFirebaseMode]);
 
@@ -196,9 +188,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           createdAt: profile.createdAt,
           lastLogin: profile.lastLogin,
         };
-        // Store user in localStorage for consistent access
-        localStorage.setItem('fleetai_user', JSON.stringify(user));
-        localStorage.setItem('fleet_user', JSON.stringify(user));
+        // Create secure session
+        sessionManager.createSession({
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          status: user.status,
+        });
+        // Store user info for email notifications
+        localStorage.setItem('user_email', user.email);
+        localStorage.setItem('user_name', user.name);
         setAuthState({
           user,
           isAuthenticated: true,
@@ -211,7 +211,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     
-    // Local mock auth
+    // Local mock auth - no localStorage session persistence
     await new Promise(resolve => setTimeout(resolve, 800));
 
     const user = users.find(u => u.email === credentials.email);
@@ -237,8 +237,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const updatedUser = { ...user, lastLogin: new Date() };
-    localStorage.setItem('fleetai_user', JSON.stringify(updatedUser));
-    localStorage.setItem('fleet_user', JSON.stringify(updatedUser));
+    // Don't store in localStorage - require manual login each time
+    // But store user info for email notifications
+    localStorage.setItem('user_email', user.email);
+    localStorage.setItem('user_name', user.name);
     
     setAuthState({
       user: updatedUser,
@@ -253,9 +255,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (isFirebaseMode) {
       try {
         await firebaseAuthService.register(data.email, data.password, data.name, 'viewer');
+        
+        // Send welcome email
+        try {
+          await sendWelcomeEmail({
+            userName: data.name,
+            userEmail: data.email,
+            registrationDate: new Date().toLocaleDateString('en-US', { 
+              weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+            }),
+            role: 'Fleet Manager',
+          });
+          console.log('Welcome email sent successfully');
+        } catch (emailError) {
+          console.log('Welcome email not sent (EmailJS not configured):', emailError);
+        }
+        
         return { 
           success: true, 
-          message: 'Registration successful! You can now log in.' 
+          message: 'Registration successful! Welcome email has been sent. You can now log in.' 
         };
       } catch (error: any) {
         console.error('Firebase register error:', error);
@@ -282,6 +300,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       createdAt: new Date(),
     };
 
+    // Send welcome email for local auth too
+    try {
+      await sendWelcomeEmail({
+        userName: data.name,
+        userEmail: data.email,
+        registrationDate: new Date().toLocaleDateString('en-US', { 
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        }),
+        role: 'Fleet Manager',
+      });
+    } catch (emailError) {
+      console.log('Welcome email not sent:', emailError);
+    }
+
     setUsers(prev => [...prev, newUser]);
     MOCK_PASSWORDS[data.email] = data.password;
 
@@ -295,8 +327,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (isFirebaseMode) {
       await firebaseAuthService.logout();
     }
-    localStorage.removeItem('fleetai_user');
-    localStorage.removeItem('fleet_user');
+    // Clear session properly
+    sessionManager.clearSession();
     setAuthState({
       user: null,
       isAuthenticated: false,
@@ -310,7 +342,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     if (authState.user) {
       const updatedUser = { ...authState.user, ...updates };
-      localStorage.setItem('fleetai_user', JSON.stringify(updatedUser));
+      // Update session if it's the current user
+      if (isFirebaseMode && updatedUser.id === authState.user?.id) {
+        sessionManager.updateSession({
+          userId: updatedUser.id,
+          email: updatedUser.email,
+          name: updatedUser.name,
+          role: updatedUser.role,
+          status: updatedUser.status,
+        });
+      }
       setAuthState(prev => ({ ...prev, user: updatedUser }));
     }
   }, [isFirebaseMode, authState.user]);
@@ -320,6 +361,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [users]);
 
   const approveUser = useCallback(async (userId: string) => {
+    console.log('ApproveUser called with userId:', userId);
+    console.log('Current users:', users);
+    console.log('IsFirebaseMode:', isFirebaseMode);
+    
     if (isFirebaseMode) {
       try {
         await firebaseAuthService.approveUser(userId, authState.user?.id || '');
@@ -341,24 +386,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           approvedAt: u.approvedAt,
         }));
         setUsers(mappedUsers);
+        console.log('User approved via Firebase:', userId);
       } catch (error) {
         console.error('Error approving user:', error);
       }
     } else {
-      setUsers(prev => prev.map(u => 
-        u.id === userId 
-          ? { 
-              ...u, 
-              status: 'approved' as UserStatus, 
-              approvedBy: authState.user?.id,
-              approvedAt: new Date()
-            }
-          : u
-      ));
+      console.log('Approving user in local mode:', userId);
+      setUsers(prev => {
+        const updated = prev.map(u => 
+          u.id === userId 
+            ? { 
+                ...u, 
+                status: 'approved' as UserStatus, 
+                approvedBy: authState.user?.id,
+                approvedAt: new Date()
+              }
+            : u
+        );
+        console.log('Updated users after approval:', updated);
+        return updated;
+      });
     }
-  }, [isFirebaseMode, authState.user?.id]);
+  }, [isFirebaseMode, authState.user?.id, users]);
 
   const rejectUser = useCallback(async (userId: string) => {
+    console.log('RejectUser called with userId:', userId);
+    console.log('Current users:', users);
+    console.log('IsFirebaseMode:', isFirebaseMode);
+    
     if (isFirebaseMode) {
       try {
         await firebaseAuthService.rejectUser(userId);
@@ -378,15 +433,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           loginCount: u.loginCount,
         }));
         setUsers(mappedUsers);
+        console.log('User rejected via Firebase:', userId);
       } catch (error) {
         console.error('Error rejecting user:', error);
       }
     } else {
-      setUsers(prev => prev.map(u => 
-        u.id === userId ? { ...u, status: 'rejected' as UserStatus } : u
-      ));
+      console.log('Rejecting user in local mode:', userId);
+      setUsers(prev => {
+        const updated = prev.map(u => 
+          u.id === userId ? { ...u, status: 'rejected' as UserStatus } : u
+        );
+        console.log('Updated users after rejection:', updated);
+        return updated;
+      });
     }
-  }, [isFirebaseMode]);
+  }, [isFirebaseMode, users]);
 
   const updateUserRole = useCallback(async (userId: string, role: UserRole) => {
     if (isFirebaseMode) {

@@ -13,7 +13,13 @@ import {
   Activity,
   Shield,
   Users,
-  Sparkles
+  Sparkles,
+  BarChart3,
+  AlertOctagon,
+  Lightbulb,
+  GitCompare,
+  Trophy,
+  Mail,
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 
@@ -31,6 +37,12 @@ const navItems = [
   { id: 'alerts', label: 'Alerts', icon: AlertTriangle },
   { id: 'predictions', label: 'Predictions', icon: Brain },
   { id: 'analytics', label: 'Analytics', icon: Activity },
+  { id: 'advanced-analytics', label: 'Advanced AI', icon: BarChart3 },
+  { id: 'anomaly-detection', label: 'Anomaly Detection', icon: AlertOctagon },
+  { id: 'smart-insights', label: 'Smart Insights', icon: Lightbulb },
+  { id: 'vehicle-compare', label: 'Compare Vehicles', icon: GitCompare },
+  { id: 'driver-leaderboard', label: 'Driver Rankings', icon: Trophy },
+  { id: 'email-center', label: 'Email Center', icon: Mail },
   { id: 'reports', label: 'Reports', icon: FileText },
   { id: 'upload', label: 'Data Upload', icon: Upload },
 ];

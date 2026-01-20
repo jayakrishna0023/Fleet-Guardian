@@ -117,18 +117,38 @@ export const generateMockTripData = (vehicleId: string, days: number = 30): Trip
     const tripsPerDay = Math.floor(Math.random() * 3) + 1;
     
     for (let j = 0; j < tripsPerDay; j++) {
+      const startTime = new Date(tripDate.getTime() + j * 8 * 60 * 60 * 1000);
+      const tripDuration = 30 + Math.random() * 180; // minutes
+      const endTime = new Date(startTime.getTime() + tripDuration * 60 * 1000);
+      const distanceTraveled = Math.floor(Math.random() * 150) + 50;
+      
       trips.push({
         id: `trip-${vehicleId}-${i}-${j}`,
         vehicleId,
-        timestamp: new Date(tripDate.getTime() + j * 8 * 60 * 60 * 1000),
-        mileage: Math.floor(Math.random() * 150) + 50,
+        startTime,
+        endTime,
+        timestamp: startTime,
+        mileage: distanceTraveled,
+        distanceTraveled,
         engineTemperature: 80 + Math.random() * 30,
         fuelEfficiency: 5 + Math.random() * 10,
+        fuelConsumed: (distanceTraveled / (5 + Math.random() * 10)),
         brakingIntensity: Math.random() * 100,
         speedVariation: Math.random() * 50,
+        maxSpeed: 40 + Math.random() * 60,
         idleTime: Math.random() * 30,
-        tripDuration: 30 + Math.random() * 180,
+        tripDuration: Math.round(tripDuration),
         averageSpeed: 25 + Math.random() * 40,
+        startLocation: {
+          lat: 40.7128 + (Math.random() - 0.5) * 0.5,
+          lng: -74.006 + (Math.random() - 0.5) * 0.5,
+          address: `Pickup Location ${i}-${j}`,
+        },
+        endLocation: {
+          lat: 40.7128 + (Math.random() - 0.5) * 0.5,
+          lng: -74.006 + (Math.random() - 0.5) * 0.5,
+          address: `Delivery Location ${i}-${j}`,
+        },
       });
     }
   }

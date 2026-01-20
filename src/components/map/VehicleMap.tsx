@@ -66,7 +66,8 @@ const VehicleMap: React.FC<VehicleMapProps> = ({
   showControls = true,
   height = '500px',
 }) => {
-  const [vehicles, setVehicles] = useState<VehicleLocation[]>(propVehicles || generateMockLocations());
+  // Use provided vehicles or empty array (no mock data)
+  const [vehicles, setVehicles] = useState<VehicleLocation[]>(propVehicles || []);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mapType, setMapType] = useState<'road' | 'satellite' | 'terrain'>('road');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -110,11 +111,14 @@ const VehicleMap: React.FC<VehicleMapProps> = ({
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setVehicles(generateMockLocations());
+    // Just refresh the current vehicles display
+    await new Promise(resolve => setTimeout(resolve, 500));
+    // If we have prop vehicles, keep them; otherwise keep current state
+    if (propVehicles && propVehicles.length > 0) {
+      setVehicles(propVehicles);
+    }
     setIsRefreshing(false);
-  }, []);
+  }, [propVehicles]);
 
   const getStatusColor = (status: VehicleLocation['status']) => {
     switch (status) {

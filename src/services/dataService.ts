@@ -2,6 +2,7 @@
 // Manages vehicle data, telemetry, and provides real-time updates
 
 import { Vehicle, TripData, Alert, MaintenanceRecord } from '@/types/vehicle';
+import { sendAlertEmail } from '@/services/emailService';
 
 const STORAGE_KEYS = {
   VEHICLES: 'fleet_vehicles',
@@ -324,7 +325,64 @@ class DataService {
       if (severity === 'critical') vehicle.status = 'critical';
       this.saveVehicles();
       this.notifyListeners('alerts', this.getAllAlerts());
+      
+      // Send email notification for critical alerts
+      if (severity === 'critical') {
+        this.sendAlertNotification(vehicle, title, message, severity);
+      }
     }
+  }
+
+  private async sendAlertNotification(
+    vehicle: Vehicle, 
+    title: string, 
+    message: string, 
+    severity: 'info' | 'warning' | 'critical'
+  ): Promise<void> {
+    try {
+      const userEmail = localStorage.getItem('user_email');
+      const userName = localStorage.getItem('user_name') || 'Fleet Manager';
+      
+      if (userEmail) {
+        await sendAlertEmail({
+          userName,
+          userEmail,
+          alertTime: new Date().toLocaleString(),
+          alertType: severity,
+          vehicleName: vehicle.name,
+          licensePlate: vehicle.licensePlate,
+          alertTitle: title,
+          alertMessage: message,
+          recommendedAction: this.getRecommendedAction(title, severity),
+        });
+        console.log('Alert email notification sent for:', title);
+      }
+    } catch (error) {
+      console.log('Alert email not sent:', error);
+    }
+  }
+
+  private getRecommendedAction(title: string, severity: string): string {
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('engine') || titleLower.includes('temperature')) {
+      return 'Stop the vehicle immediately and allow the engine to cool down. Schedule immediate inspection.';
+    }
+    if (titleLower.includes('brake')) {
+      return 'Reduce speed and avoid sudden braking. Schedule immediate brake system inspection.';
+    }
+    if (titleLower.includes('fuel')) {
+      return 'Refuel the vehicle as soon as possible to avoid breakdowns.';
+    }
+    if (titleLower.includes('oil') || titleLower.includes('pressure')) {
+      return 'Stop driving immediately. Low oil pressure can cause severe engine damage. Tow to service center.';
+    }
+    if (titleLower.includes('battery')) {
+      return 'Check battery connections and consider replacement if voltage remains low.';
+    }
+    if (severity === 'critical') {
+      return 'Take immediate action to address this issue. Contact maintenance team.';
+    }
+    return 'Monitor the situation and take action if conditions worsen.';
   }
 
   getAllAlerts(): Alert[] {

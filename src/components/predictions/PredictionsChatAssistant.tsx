@@ -52,14 +52,6 @@ What would you like to analyze?`,
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
-
     const buildPredictionContext = (): string => {
         const predictionSummary: string[] = [];
 

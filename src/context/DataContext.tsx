@@ -484,8 +484,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isFirebaseMode, addVehicle]);
 
   const approveVehicleRequest = useCallback(async (requestId: string, notes?: string): Promise<void> => {
+    console.log('ApproveVehicleRequest called with requestId:', requestId);
+    console.log('Current vehicleRequests:', vehicleRequests);
+    console.log('IsFirebaseMode:', isFirebaseMode);
+    
     const request = vehicleRequests.find(r => r.id === requestId);
-    if (!request) return;
+    if (!request) {
+      console.error('No request found for ID:', requestId);
+      return;
+    }
+    
+    console.log('Found request to approve:', request);
 
     try {
       // Parse sensor data if available
@@ -557,18 +566,28 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const requests = await firestoreService.getVehicleRequests();
         setVehicleRequests(requests);
       } else {
-        setVehicleRequests(prev => prev.map(r =>
-          r.id === requestId
-            ? { ...r, status: 'approved' as const, reviewedAt: new Date(), notes }
-            : r
-        ));
+        console.log('Approving vehicle request in local mode');
+        setVehicleRequests(prev => {
+          const updated = prev.map(r =>
+            r.id === requestId
+              ? { ...r, status: 'approved' as const, reviewedAt: new Date(), notes }
+              : r
+          );
+          console.log('Updated vehicle requests after approval:', updated);
+          return updated;
+        });
       }
+      console.log('Vehicle request approved successfully');
     } catch (error) {
       console.error('Failed to approve vehicle request:', error);
     }
   }, [vehicleRequests, addVehicle, isFirebaseMode]);
 
   const rejectVehicleRequest = useCallback(async (requestId: string, notes?: string): Promise<void> => {
+    console.log('RejectVehicleRequest called with requestId:', requestId);
+    console.log('Current vehicleRequests:', vehicleRequests);
+    console.log('IsFirebaseMode:', isFirebaseMode);
+    
     try {
       if (isFirebaseMode) {
         await firestoreService.updateVehicleRequest(requestId, {
@@ -579,12 +598,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const requests = await firestoreService.getVehicleRequests();
         setVehicleRequests(requests);
       } else {
-        setVehicleRequests(prev => prev.map(r =>
-          r.id === requestId
-            ? { ...r, status: 'rejected' as const, reviewedAt: new Date(), notes }
-            : r
-        ));
+        console.log('Rejecting vehicle request in local mode');
+        setVehicleRequests(prev => {
+          const updated = prev.map(r =>
+            r.id === requestId
+              ? { ...r, status: 'rejected' as const, reviewedAt: new Date(), notes }
+              : r
+          );
+          console.log('Updated vehicle requests after rejection:', updated);
+          return updated;
+        });
       }
+      console.log('Vehicle request rejected successfully');
     } catch (error) {
       console.error('Failed to reject vehicle request:', error);
     }

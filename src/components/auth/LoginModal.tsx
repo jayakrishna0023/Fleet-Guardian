@@ -269,54 +269,6 @@ export const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
                         </button>
                       </p>
                     </div>
-
-                    {/* Demo Credentials */}
-                    {isLogin && (
-                      <div className="mt-6 pt-6 border-t border-slate-700/50">
-                        <p className="text-xs text-slate-500 text-center mb-3 uppercase tracking-widest font-medium">
-                          Demo Credentials
-                        </p>
-                        <div className="space-y-2">
-                          <button
-                            type="button"
-                            onClick={() => fillDemoCredentials('admin@fleetai.com', 'admin123')}
-                            className="w-full flex items-center justify-between p-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-blue-500/50 rounded-lg transition-all group"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center">
-                                <Shield className="w-4 h-4 text-white" />
-                              </div>
-                              <div className="text-left">
-                                <span className="text-white font-medium block text-sm">Admin</span>
-                                <span className="text-slate-500 text-xs">Full access</span>
-                              </div>
-                            </div>
-                            <code className="text-xs text-blue-400 font-mono bg-blue-500/10 px-2 py-1 rounded">
-                              admin@fleetai.com
-                            </code>
-                          </button>
-                          
-                          <button
-                            type="button"
-                            onClick={() => fillDemoCredentials('manager@fleetai.com', 'manager123')}
-                            className="w-full flex items-center justify-between p-3 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-blue-500/50 rounded-lg transition-all group"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
-                                <User className="w-4 h-4 text-white" />
-                              </div>
-                              <div className="text-left">
-                                <span className="text-white font-medium block text-sm">Manager</span>
-                                <span className="text-slate-500 text-xs">Team access</span>
-                              </div>
-                            </div>
-                            <code className="text-xs text-blue-400 font-mono bg-blue-500/10 px-2 py-1 rounded">
-                              manager@fleetai.com
-                            </code>
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

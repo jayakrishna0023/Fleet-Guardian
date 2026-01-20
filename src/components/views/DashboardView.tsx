@@ -3,6 +3,7 @@ import { VehicleCard } from '@/components/dashboard/VehicleCard';
 import { AlertCard } from '@/components/dashboard/AlertCard';
 import { AIAssistant } from '@/components/dashboard/AIAssistant';
 import { TrendChart } from '@/components/dashboard/TrendChart';
+import { VehicleStatusDetails } from '@/components/dashboard/VehicleStatusDetails';
 import OpenStreetMap from '@/components/map/OpenStreetMap';
 import VoiceAssistantButton from '@/components/voice/VoiceAssistantButton';
 import { useData } from '@/context/DataContext';
@@ -122,43 +123,79 @@ export const DashboardView = ({ onVehicleSelect }: DashboardViewProps) => {
     };
   }, [vehicles, alerts]);
 
-  // Generate trend data by extrapolating backwards from current real values
+  // Generate metrics from REAL vehicle data - no fake extrapolation
   const metrics = useMemo(() => {
-    const days = 7;
-    const data = [];
-
-    // Get current real averages from the live fleet data
-    const currentAvgHealth = summary.averageHealthScore;
-    const currentAvgTemp = vehicles.length > 0
-      ? vehicles.reduce((sum, v) => sum + (v.sensors?.engineTemp ?? v.engineTemperature ?? 80), 0) / vehicles.length
-      : 80;
-    const currentEfficiency = fleetStats.avgFuelEfficiency || 8;
-
-    // Create a deterministic trend that ends at the current real values
-    for (let i = days - 1; i >= 0; i--) {
-      const timestamp = new Date();
-      timestamp.setDate(timestamp.getDate() - i);
-
-      // Add small deterministic variations based on date to simulate history
-      // This ensures the chart looks real but ends at the actual current number
-      const dayOffset = Math.sin(timestamp.getTime()) * 2;
-
-      data.push({
-        timestamp,
-        // Extrapolate health: if current is 90, history might vary 88-92
-        healthScore: Math.min(100, Math.max(0, currentAvgHealth + dayOffset)),
-
-        // Extrapolate temp: varies slightly around current average
-        engineTemperature: currentAvgTemp + (dayOffset * 1.5),
-
-        // Extrapolate efficiency: varies slightly
-        fuelEfficiency: Math.max(0, currentEfficiency + (dayOffset * 0.1)),
-
-        // Braking intensity (synthetic but realistic variance)
-        brakingIntensity: 30 + (Math.abs(dayOffset) * 5),
+    // Collect real metrics from all vehicles' trip data
+    const allMetrics: Array<{
+      timestamp: Date;
+      healthScore: number;
+      engineTemperature: number;
+      fuelEfficiency: number;
+      brakingIntensity: number;
+      speedVariation: number;
+    }> = [];
+    
+    // Get real trip data from all vehicles
+    vehicles.forEach(vehicle => {
+      if (vehicle.trips && vehicle.trips.length > 0) {
+        vehicle.trips.forEach(trip => {
+          allMetrics.push({
+            timestamp: new Date(trip.timestamp),
+            healthScore: vehicle.healthScore,
+            engineTemperature: trip.engineTemperature || vehicle.sensors?.engineTemp || vehicle.engineTemperature || 80,
+            fuelEfficiency: trip.fuelEfficiency || vehicle.fuelEfficiency,
+            brakingIntensity: trip.brakingIntensity || 30,
+            speedVariation: trip.speedVariation || 10,
+          });
+        });
+      }
+    });
+    
+    // If we have real trip data, group by day and average
+    if (allMetrics.length > 0) {
+      const groupedByDay = new Map<string, typeof allMetrics>();
+      
+      allMetrics.forEach(m => {
+        const dayKey = format(m.timestamp, 'yyyy-MM-dd');
+        if (!groupedByDay.has(dayKey)) {
+          groupedByDay.set(dayKey, []);
+        }
+        groupedByDay.get(dayKey)!.push(m);
       });
+      
+      // Convert to averaged daily metrics
+      const dailyMetrics = Array.from(groupedByDay.entries())
+        .map(([day, dayMetrics]) => ({
+          timestamp: new Date(day),
+          healthScore: dayMetrics.reduce((sum, m) => sum + m.healthScore, 0) / dayMetrics.length,
+          engineTemperature: dayMetrics.reduce((sum, m) => sum + m.engineTemperature, 0) / dayMetrics.length,
+          fuelEfficiency: dayMetrics.reduce((sum, m) => sum + m.fuelEfficiency, 0) / dayMetrics.length,
+          brakingIntensity: dayMetrics.reduce((sum, m) => sum + m.brakingIntensity, 0) / dayMetrics.length,
+          speedVariation: dayMetrics.reduce((sum, m) => sum + m.speedVariation, 0) / dayMetrics.length,
+        }))
+        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+        .slice(-7); // Last 7 days
+      
+      if (dailyMetrics.length > 0) {
+        return dailyMetrics;
+      }
     }
-    return data;
+    
+    // Fallback: Use current vehicle states (not fake - actual current data)
+    // This only happens if there's no trip history
+    const currentMetrics = {
+      timestamp: new Date(),
+      healthScore: summary.averageHealthScore,
+      engineTemperature: vehicles.length > 0
+        ? vehicles.reduce((sum, v) => sum + (v.sensors?.engineTemp ?? v.engineTemperature ?? 80), 0) / vehicles.length
+        : 80,
+      fuelEfficiency: fleetStats.avgFuelEfficiency || 8,
+      brakingIntensity: 30,
+      speedVariation: 10,
+    };
+    
+    // Return just the current state - no fake history
+    return [currentMetrics];
   }, [vehicles, summary, fleetStats]);
 
   // Map vehicles for the OpenStreetMap component
@@ -364,6 +401,30 @@ export const DashboardView = ({ onVehicleSelect }: DashboardViewProps) => {
             </motion.span>
           </div>
           <FleetOverview summary={summary} />
+        </section>
+      </FadeInView>
+
+      {/* Vehicle-Specific Issues Panel - NEW */}
+      <FadeInView direction="up" delay={0.15}>
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <motion.h2 
+              className="text-xl font-semibold flex items-center gap-2"
+              whileHover={{ x: 5 }}
+            >
+              <motion.div
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 3 }}
+              >
+                <AlertTriangle className="w-6 h-6 text-warning" />
+              </motion.div>
+              Vehicle-Specific Issues
+              <span className="text-sm font-normal text-muted-foreground">
+                (with reasons)
+              </span>
+            </motion.h2>
+          </div>
+          <VehicleStatusDetails onVehicleSelect={onVehicleSelect} />
         </section>
       </FadeInView>
 

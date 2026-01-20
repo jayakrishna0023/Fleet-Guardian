@@ -41,13 +41,6 @@ export const VoiceAssistantOrb: React.FC<VoiceAssistantOrbProps> = ({ className 
     };
   }, []);
 
-  // Scroll to bottom when history updates
-  useEffect(() => {
-    if (historyRef.current) {
-      historyRef.current.scrollTop = historyRef.current.scrollHeight;
-    }
-  }, [history]);
-
   const handleOrbClick = () => {
     if (!isOpen) {
       setIsOpen(true);

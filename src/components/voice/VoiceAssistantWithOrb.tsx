@@ -75,13 +75,6 @@ export const VoiceAssistantWithOrb: React.FC<VoiceAssistantWithOrbProps> = ({
     };
   }, []);
 
-  // Auto-scroll chat history
-  useEffect(() => {
-    if (historyRef.current) {
-      historyRef.current.scrollTop = historyRef.current.scrollHeight;
-    }
-  }, [history, transcript, response]);
-
   // Setup audio input when listening starts
   useEffect(() => {
     if (state === 'listening' && audioContextRef.current && !inputNodeRef.current) {
@@ -296,7 +289,7 @@ export const VoiceAssistantWithOrb: React.FC<VoiceAssistantWithOrbProps> = ({
       {/* Chat History */}
       <div
         ref={historyRef}
-        className="flex-1 overflow-y-auto px-6 py-4 space-y-4 scroll-smooth custom-scrollbar"
+        className="flex-1 overflow-y-auto px-6 py-4 space-y-4 custom-scrollbar"
       >
         {history.length === 0 && !transcript && (
           <div className="h-full flex items-center justify-center">

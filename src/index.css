@@ -5,6 +5,19 @@
 @tailwind utilities;
 
 @layer base {
+  /* Disable all automatic scrolling behavior */
+  * {
+    scroll-behavior: auto !important;
+  }
+  
+  html {
+    scroll-behavior: auto !important;
+  }
+  
+  body {
+    scroll-behavior: auto !important;
+  }
+
   :root {
     --background: 222 47% 6%;
     --foreground: 210 40% 98%;

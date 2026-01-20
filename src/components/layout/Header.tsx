@@ -23,6 +23,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { cn } from '@/lib/utils';
 import { ProfileModal } from '@/components/profile/ProfileModal';
+import { SessionInfo } from '@/components/auth/SessionInfo';
 import AudioOrb from '@/components/voice/AudioOrb';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -530,6 +531,9 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
                 </p>
               </div>
             </div>
+            
+            {/* Session Info */}
+            <SessionInfo />
             
             <div className="hidden md:block">
               <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", showUserMenu && "rotate-180")} />

@@ -6,6 +6,12 @@ import { VehiclesView } from '@/components/views/VehiclesView';
 import { AlertsView } from '@/components/views/AlertsView';
 import { PredictionsView } from '@/components/views/PredictionsView';
 import { AnalyticsView } from '@/components/views/AnalyticsView';
+import { AdvancedAnalyticsView } from '@/components/views/AdvancedAnalyticsView';
+import { AnomalyDetectionView } from '@/components/views/AnomalyDetectionView';
+import { SmartInsightsView } from '@/components/views/SmartInsightsView';
+import { VehicleComparisonTool } from '@/components/vehicles/VehicleComparisonTool';
+import { DriverLeaderboardView } from '@/components/views/DriverLeaderboardView';
+import { EmailCenterView } from '@/components/views/EmailCenterView';
 import { ReportsView } from '@/components/views/ReportsView';
 import { UploadView } from '@/components/views/UploadView';
 import { VehicleDetailView } from '@/components/views/VehicleDetailView';
@@ -23,6 +29,12 @@ const viewTitles: Record<string, { title: string; subtitle: string }> = {
   alerts: { title: 'Alert Center', subtitle: 'Monitor and respond to system alerts' },
   predictions: { title: 'Predictive Maintenance', subtitle: 'ML-powered failure predictions and recommendations' },
   analytics: { title: 'Fleet Analytics', subtitle: 'Performance metrics and trend analysis' },
+  'advanced-analytics': { title: 'Advanced AI Analytics', subtitle: 'Driver scoring, carbon tracking, cost forecasting & smart insights' },
+  'anomaly-detection': { title: 'AI Anomaly Detection', subtitle: 'ML-powered real-time anomaly detection and analysis' },
+  'smart-insights': { title: 'Smart Fleet Insights', subtitle: 'AI recommendations, predictive maintenance & route optimization' },
+  'vehicle-compare': { title: 'Vehicle Comparison', subtitle: 'Side-by-side vehicle performance comparison' },
+  'driver-leaderboard': { title: 'Driver Performance Rankings', subtitle: 'Track and rank driver performance metrics' },
+  'email-center': { title: 'Email Center', subtitle: 'Send beautiful email reports and notifications' },
   reports: { title: 'Reports', subtitle: 'Generate and download fleet reports' },
   upload: { title: 'Data Upload', subtitle: 'Import vehicle trip and sensor data' },
   admin: { title: 'Admin Panel', subtitle: 'Manage users and vehicle approvals' },
@@ -98,6 +110,18 @@ const Index = () => {
         return <PredictionsView />;
       case 'analytics':
         return <AnalyticsView />;
+      case 'advanced-analytics':
+        return <AdvancedAnalyticsView />;
+      case 'anomaly-detection':
+        return <AnomalyDetectionView />;
+      case 'smart-insights':
+        return <SmartInsightsView />;
+      case 'vehicle-compare':
+        return <VehicleComparisonTool />;
+      case 'driver-leaderboard':
+        return <DriverLeaderboardView />;
+      case 'email-center':
+        return <EmailCenterView />;
       case 'reports':
         return <ReportsView />;
       case 'upload':
