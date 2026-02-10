@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
-import { 
-  Bell, 
+import {
+  Bell,
   Search,
   User,
   Moon,
@@ -31,6 +31,7 @@ interface HeaderProps {
   title: string;
   subtitle?: string;
   alertCount: number;
+  onNavigate: (view: string, id?: string) => void;
 }
 
 interface SearchResult {
@@ -42,7 +43,7 @@ interface SearchResult {
   onClick?: () => void;
 }
 
-export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
+export const Header = ({ title, subtitle, alertCount, onNavigate }: HeaderProps) => {
   const { user, logout } = useAuth();
   const { vehicles, alerts } = useData();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -54,7 +55,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   // Get current theme
   const [currentTheme, setCurrentTheme] = useState<'dark' | 'light' | 'system'>(() => {
     if (typeof window !== 'undefined') {
@@ -63,7 +64,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
     return 'dark';
   });
 
-  const isDark = currentTheme === 'dark' || 
+  const isDark = currentTheme === 'dark' ||
     (currentTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   // Handle theme toggle
@@ -100,7 +101,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
     }
 
     setIsSearching(true);
-    
+
     // Simulate search delay
     await new Promise(resolve => setTimeout(resolve, 200));
 
@@ -110,19 +111,21 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
     // Search vehicles
     vehicles.forEach(vehicle => {
       if (
+        vehicle.name.toLowerCase().includes(lowerQuery) ||
+        vehicle.licensePlate.toLowerCase().includes(lowerQuery) ||
+        vehicle.driver?.toLowerCase().includes(lowerQuery) ||
         vehicle.id.toLowerCase().includes(lowerQuery) ||
-        vehicle.make?.toLowerCase().includes(lowerQuery) ||
-        vehicle.model?.toLowerCase().includes(lowerQuery) ||
-        vehicle.driver?.toLowerCase().includes(lowerQuery)
+        vehicle.manufacturer?.toLowerCase().includes(lowerQuery) ||
+        vehicle.model?.toLowerCase().includes(lowerQuery)
       ) {
         results.push({
           type: 'vehicle',
           id: vehicle.id,
-          title: `${vehicle.make} ${vehicle.model}`,
-          subtitle: `${vehicle.id} • ${vehicle.driver || 'No driver'}`,
+          title: vehicle.name,
+          subtitle: `${vehicle.licensePlate} • ${vehicle.driver || 'No driver'}`,
           icon: Car,
           onClick: () => {
-            window.dispatchEvent(new CustomEvent('navigate', { detail: { view: 'vehicle-detail', id: vehicle.id } }));
+            onNavigate('vehicle-detail', vehicle.id);
             setShowSearch(false);
           }
         });
@@ -143,7 +146,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
           subtitle: `${alert.vehicleId} • ${alert.type}`,
           icon: AlertTriangle,
           onClick: () => {
-            window.dispatchEvent(new CustomEvent('navigate', { detail: { view: 'alerts' } }));
+            onNavigate('alerts');
             setShowSearch(false);
           }
         });
@@ -168,7 +171,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
           subtitle: action.subtitle,
           icon: action.keyword === 'report' ? FileText : action.keyword === 'maintenance' ? Wrench : Sparkles,
           onClick: () => {
-            window.dispatchEvent(new CustomEvent('navigate', { detail: { view: action.view } }));
+            onNavigate(action.view);
             setShowSearch(false);
           }
         });
@@ -208,7 +211,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
   const recentAlerts = alerts.slice(0, 5);
 
   return (
-    <motion.header 
+    <motion.header
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
@@ -220,16 +223,16 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
         animate={{ x: ['-100%', '100%'] }}
         transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
       />
-      
+
       {/* Left - Title & Breadcrumb */}
-      <motion.div 
+      <motion.div
         className="flex items-center gap-4 relative z-10"
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ delay: 0.1, duration: 0.4 }}
       >
         <div>
-          <motion.h1 
+          <motion.h1
             className="text-lg md:text-xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text"
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
@@ -238,7 +241,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
             {title}
           </motion.h1>
           {subtitle && (
-            <motion.p 
+            <motion.p
               className="text-xs md:text-sm text-muted-foreground"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -350,7 +353,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
       </div>
 
       {/* Right - Actions */}
-      <motion.div 
+      <motion.div
         className="flex items-center gap-2 md:gap-3 relative z-10"
         initial={{ x: 20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
@@ -369,7 +372,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
         </motion.div>
 
         {/* Voice Assistant */}
-        <motion.div 
+        <motion.div
           className="hidden md:block mr-2"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -403,15 +406,15 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
         {/* Notifications */}
         <div className="relative">
           <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="relative"
               onClick={() => setShowNotifications(!showNotifications)}
             >
               <Bell className="w-5 h-5" />
               {alertCount > 0 && (
-                <motion.span 
+                <motion.span
                   className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center font-bold"
                   initial={{ scale: 0 }}
                   animate={{ scale: [1, 1.2, 1] }}
@@ -427,14 +430,14 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
           <AnimatePresence>
             {showNotifications && (
               <>
-                <motion.div 
-                  className="fixed inset-0 z-[95]" 
+                <motion.div
+                  className="fixed inset-0 z-[95]"
                   onClick={() => setShowNotifications(false)}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 />
-                <motion.div 
+                <motion.div
                   className="absolute right-0 top-full mt-2 w-80 bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl overflow-hidden z-[96]"
                   initial={{ opacity: 0, y: -10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -447,7 +450,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {recentAlerts.map((alert, index) => (
-                      <motion.div 
+                      <motion.div
                         key={alert.id}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -459,7 +462,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
                         }}
                       >
                         <div className="flex gap-3">
-                          <motion.div 
+                          <motion.div
                             className={cn(
                               'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
                               alert.severity === 'critical' && 'bg-red-500/20 text-red-500',
@@ -480,8 +483,8 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
                     ))}
                   </div>
                   <div className="p-2 border-t border-border/50">
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       className="w-full text-sm h-8"
                       onClick={() => {
                         window.dispatchEvent(new CustomEvent('navigate', { detail: { view: 'alerts' } }));
@@ -508,7 +511,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
           >
             {/* User Avatar with status indicator */}
             <div className="relative">
-              <div 
+              <div
                 className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm shadow-lg ring-2 ring-background"
               >
                 {user?.name?.charAt(0)?.toUpperCase() || 'U'}
@@ -516,7 +519,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
               {/* Online status indicator */}
               <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-background rounded-full" />
             </div>
-            
+
             {/* User info - always visible on md+ screens */}
             <div className="hidden md:block text-left min-w-[100px]">
               <p className="text-sm font-semibold leading-tight truncate max-w-[120px]">
@@ -531,10 +534,10 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
                 </p>
               </div>
             </div>
-            
+
             {/* Session Info */}
             <SessionInfo />
-            
+
             <div className="hidden md:block">
               <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", showUserMenu && "rotate-180")} />
             </div>
@@ -544,18 +547,18 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
           {showUserMenu && (
             <>
               {/* Backdrop to close menu */}
-              <div 
-                className="fixed inset-0 z-[998]" 
+              <div
+                className="fixed inset-0 z-[998]"
                 onClick={() => setShowUserMenu(false)}
               />
               {/* Menu Content */}
-              <div 
+              <motion.div
                 className="absolute right-0 top-full mt-2 w-72 bg-card border border-border rounded-xl overflow-hidden z-[999] shadow-2xl"
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                  onClick={(e) => e.stopPropagation()}
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                onClick={(e) => e.stopPropagation()}
               >
                 {/* Header Section with User Info */}
                 <div className="p-4 bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-b border-border">
@@ -584,7 +587,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
 
                 {/* Menu Items */}
                 <div className="p-2 space-y-1">
-                  <button 
+                  <button
                     onClick={() => {
                       setShowUserMenu(false);
                       setShowProfileModal(true);
@@ -594,8 +597,8 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
                     <User className="w-4 h-4 text-primary" />
                     <span>Profile Settings</span>
                   </button>
-                  
-                  <button 
+
+                  <button
                     onClick={() => {
                       setShowUserMenu(false);
                       setShowProfileModal(true);
@@ -610,7 +613,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
                   <div className="h-px bg-border my-2"></div>
 
                   {/* Theme Toggle */}
-                  <button 
+                  <button
                     onClick={() => toggleTheme()}
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg hover:bg-secondary transition-colors text-foreground"
                   >
@@ -637,7 +640,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
                   <div className="h-px bg-border my-2"></div>
 
                   {/* Sign Out */}
-                  <button 
+                  <button
                     onClick={() => {
                       setShowUserMenu(false);
                       logout();
@@ -648,7 +651,7 @@ export const Header = ({ title, subtitle, alertCount }: HeaderProps) => {
                     <span>Sign Out</span>
                   </button>
                 </div>
-              </div>
+              </motion.div>
             </>
           )}
         </div>

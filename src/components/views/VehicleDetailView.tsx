@@ -7,6 +7,7 @@ import { AlertCard } from '@/components/dashboard/AlertCard';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import { TripManagement } from '@/components/vehicles/TripManagement';
 import { VehicleChatAssistant } from '@/components/vehicles/VehicleChatAssistant';
 import { EditVehicleModal } from '@/components/vehicles/EditVehicleModal';
@@ -40,19 +41,21 @@ interface VehicleDetailViewProps {
 }
 
 export const VehicleDetailView = ({ vehicleId, onBack }: VehicleDetailViewProps) => {
-  const { getVehicleById, alerts, getVehiclePredictions, acknowledgeAlert } = useData();
+  const { getVehicleById, alerts, getVehiclePredictions, acknowledgeAlert, updateVehicle } = useData();
   const { user } = useAuth();
+  const { toast } = useToast();
   const vehicle = getVehicleById(vehicleId);
   const [showTripModal, setShowTripModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  
+  const [isSchedulingMaintenance, setIsSchedulingMaintenance] = useState(false);
+
   // Generate real metrics from vehicle's actual data and trips
   const metrics: VehicleMetrics[] = useMemo(() => {
     if (!vehicle) return [];
-    
+
     const data: VehicleMetrics[] = [];
     const now = new Date();
-    
+
     // Use trips data to generate real historical metrics if available
     if (vehicle.trips && vehicle.trips.length > 0) {
       vehicle.trips.slice(0, 14).forEach((trip) => {
@@ -66,14 +69,14 @@ export const VehicleDetailView = ({ vehicleId, onBack }: VehicleDetailViewProps)
         });
       });
     }
-    
+
     // If no trips or insufficient data, create from current vehicle state
     // with minimal variance (actual current state, not fake)
     if (data.length < 3) {
       const baseTemp = vehicle.sensors?.engineTemp || vehicle.engineTemperature || 80;
       const baseEfficiency = vehicle.fuelEfficiency || 8;
       const baseHealth = vehicle.healthScore || 85;
-      
+
       // Add current state as the most recent data point
       data.unshift({
         timestamp: now,
@@ -83,13 +86,13 @@ export const VehicleDetailView = ({ vehicleId, onBack }: VehicleDetailViewProps)
         speedVariation: 10,
         healthScore: baseHealth,
       });
-      
+
       // Add a few historical points based on current state
       // These are derived from current values, not random
       for (let i = 1; i <= Math.max(7 - data.length, 0); i++) {
         const pastDate = new Date(now);
         pastDate.setDate(pastDate.getDate() - i);
-        
+
         data.push({
           timestamp: pastDate,
           engineTemperature: baseTemp,
@@ -100,11 +103,11 @@ export const VehicleDetailView = ({ vehicleId, onBack }: VehicleDetailViewProps)
         });
       }
     }
-    
+
     // Sort by timestamp ascending
     return data.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }, [vehicle]);
-  
+
   // Use real trips from vehicle data
   const trips = vehicle?.trips || [];
 
@@ -112,12 +115,12 @@ export const VehicleDetailView = ({ vehicleId, onBack }: VehicleDetailViewProps)
   const vehicleAlerts = useMemo(() => {
     return alerts.filter(a => a.vehicleId === vehicleId);
   }, [alerts, vehicleId]);
-  
+
   // Get real predictions from ML engine
   const vehicleInsights = useMemo(() => {
     if (!vehicle) return [];
     const predictions = getVehiclePredictions(vehicleId);
-    
+
     // Convert ML predictions to PredictiveInsight format
     return predictions.map(pred => ({
       vehicleId,
@@ -125,8 +128,8 @@ export const VehicleDetailView = ({ vehicleId, onBack }: VehicleDetailViewProps)
       component: pred.component,
       failureProbability: pred.probability,
       confidence: pred.confidence,
-      trend: pred.probability > 0.5 ? 'degrading' as const : 
-             pred.probability > 0.3 ? 'stable' as const : 'improving' as const,
+      trend: pred.probability > 0.5 ? 'degrading' as const :
+        pred.probability > 0.3 ? 'stable' as const : 'improving' as const,
       recommendation: pred.recommendation,
       severity: pred.severity,
     }));
@@ -199,13 +202,48 @@ export const VehicleDetailView = ({ vehicleId, onBack }: VehicleDetailViewProps)
               </Button>
             </>
           )}
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => {
+            toast({
+              title: '📄 Report Generated',
+              description: `Vehicle report for ${vehicle.name} (${vehicle.licensePlate}) — Health: ${vehicle.healthScore}%, Mileage: ${(vehicle.mileage / 1000).toFixed(0)}K km, Status: ${vehicle.status}.`,
+            });
+          }}>
             <FileText className="w-4 h-4 mr-2" />
             Generate Report
           </Button>
-          <Button variant="outline">
-            <Wrench className="w-4 h-4 mr-2" />
-            Schedule Maintenance
+          <Button
+            variant="outline"
+            disabled={isSchedulingMaintenance || vehicle.status === 'maintenance'}
+            onClick={async () => {
+              if (window.confirm(`Schedule maintenance for ${vehicle.name}? This will take the vehicle out of active service.`)) {
+                setIsSchedulingMaintenance(true);
+                try {
+                  await updateVehicle(vehicle.id, {
+                    status: 'maintenance',
+                    lastMaintenance: new Date(),
+                  });
+                  toast({
+                    title: '🔧 Maintenance Scheduled',
+                    description: `${vehicle.name} has been marked for maintenance.`,
+                  });
+                } catch (err) {
+                  toast({
+                    title: 'Error',
+                    description: 'Failed to schedule maintenance. Please try again.',
+                    variant: 'destructive',
+                  });
+                } finally {
+                  setIsSchedulingMaintenance(false);
+                }
+              }
+            }}
+          >
+            {isSchedulingMaintenance ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Wrench className="w-4 h-4 mr-2" />
+            )}
+            {vehicle.status === 'maintenance' ? 'In Maintenance' : 'Schedule Maintenance'}
           </Button>
         </div>
       </div>

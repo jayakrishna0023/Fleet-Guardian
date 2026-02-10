@@ -137,6 +137,15 @@ const Index = () => {
     ? { title: 'Vehicle Details', subtitle: 'Detailed vehicle analysis and history' }
     : viewTitles[activeView] || viewTitles.dashboard;
 
+  const handleNavigate = (view: string, id?: string) => {
+    setActiveView(view);
+    if (id) {
+      setSelectedVehicleId(id);
+    } else {
+      setSelectedVehicleId(null);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar
@@ -155,6 +164,7 @@ const Index = () => {
           title={currentViewInfo.title}
           subtitle={currentViewInfo.subtitle}
           alertCount={activeAlerts}
+          onNavigate={handleNavigate}
         />
 
         <main className="flex-1 overflow-auto p-6 scrollbar-thin">

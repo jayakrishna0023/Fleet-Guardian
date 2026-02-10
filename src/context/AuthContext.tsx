@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect, useMemo } from 'react';
 import { User, AuthState, LoginCredentials, RegisterData, UserRole, UserStatus } from '@/types/auth';
 import { firebaseAuthService, UserProfile } from '@/services/firebaseAuth';
 import { isFirebaseConfigured } from '@/config/firebase';
@@ -15,6 +15,8 @@ interface AuthContextType extends AuthState {
   rejectUser: (userId: string) => void;
   updateUserRole: (userId: string, role: UserRole) => void;
   isFirebaseMode: boolean;
+  isAdmin: boolean;
+  isManager: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -75,10 +77,10 @@ const MOCK_PASSWORDS: Record<string, string> = {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>(MOCK_USERS);
-  
+
   // Determine Firebase mode synchronously
   const isFirebaseMode = isFirebaseConfigured();
-  
+
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
@@ -182,9 +184,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email: profile.email,
           name: profile.name,
           role: profile.role,
-          status: 'approved',
+          status: profile.status as User['status'],
           phone: profile.phone,
           avatar: profile.avatar,
+          department: profile.department,
           createdAt: profile.createdAt,
           lastLogin: profile.lastLogin,
         };
@@ -210,12 +213,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { success: false, message: error.message || 'Login failed. Please check your credentials.' };
       }
     }
-    
+
     // Local mock auth - no localStorage session persistence
     await new Promise(resolve => setTimeout(resolve, 800));
 
     const user = users.find(u => u.email === credentials.email);
-    
+
     if (!user) {
       return { success: false, message: 'User not found. Please check your email.' };
     }
@@ -241,7 +244,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // But store user info for email notifications
     localStorage.setItem('user_email', user.email);
     localStorage.setItem('user_name', user.name);
-    
+
     setAuthState({
       user: updatedUser,
       isAuthenticated: true,
@@ -255,14 +258,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (isFirebaseMode) {
       try {
         await firebaseAuthService.register(data.email, data.password, data.name, 'viewer');
-        
+
         // Send welcome email
         try {
           await sendWelcomeEmail({
             userName: data.name,
             userEmail: data.email,
-            registrationDate: new Date().toLocaleDateString('en-US', { 
-              weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+            registrationDate: new Date().toLocaleDateString('en-US', {
+              weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
             }),
             role: 'Fleet Manager',
           });
@@ -270,17 +273,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } catch (emailError) {
           console.log('Welcome email not sent (EmailJS not configured):', emailError);
         }
-        
-        return { 
-          success: true, 
-          message: 'Registration successful! Welcome email has been sent. You can now log in.' 
+
+        return {
+          success: true,
+          message: 'Registration successful! Welcome email has been sent. You can now log in.'
         };
       } catch (error: any) {
         console.error('Firebase register error:', error);
         return { success: false, message: error.message || 'Registration failed.' };
       }
     }
-    
+
     // Local mock auth
     await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -305,8 +308,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await sendWelcomeEmail({
         userName: data.name,
         userEmail: data.email,
-        registrationDate: new Date().toLocaleDateString('en-US', { 
-          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        registrationDate: new Date().toLocaleDateString('en-US', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
         }),
         role: 'Fleet Manager',
       });
@@ -317,9 +320,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUsers(prev => [...prev, newUser]);
     MOCK_PASSWORDS[data.email] = data.password;
 
-    return { 
-      success: true, 
-      message: 'Registration successful! Your account is pending admin approval.' 
+    return {
+      success: true,
+      message: 'Registration successful! Your account is pending admin approval.'
     };
   }, [users]);
 
@@ -364,7 +367,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log('ApproveUser called with userId:', userId);
     console.log('Current users:', users);
     console.log('IsFirebaseMode:', isFirebaseMode);
-    
+
     if (isFirebaseMode) {
       try {
         await firebaseAuthService.approveUser(userId, authState.user?.id || '');
@@ -393,14 +396,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } else {
       console.log('Approving user in local mode:', userId);
       setUsers(prev => {
-        const updated = prev.map(u => 
-          u.id === userId 
-            ? { 
-                ...u, 
-                status: 'approved' as UserStatus, 
-                approvedBy: authState.user?.id,
-                approvedAt: new Date()
-              }
+        const updated = prev.map(u =>
+          u.id === userId
+            ? {
+              ...u,
+              status: 'approved' as UserStatus,
+              approvedBy: authState.user?.id,
+              approvedAt: new Date()
+            }
             : u
         );
         console.log('Updated users after approval:', updated);
@@ -413,7 +416,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log('RejectUser called with userId:', userId);
     console.log('Current users:', users);
     console.log('IsFirebaseMode:', isFirebaseMode);
-    
+
     if (isFirebaseMode) {
       try {
         await firebaseAuthService.rejectUser(userId);
@@ -440,7 +443,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } else {
       console.log('Rejecting user in local mode:', userId);
       setUsers(prev => {
-        const updated = prev.map(u => 
+        const updated = prev.map(u =>
           u.id === userId ? { ...u, status: 'rejected' as UserStatus } : u
         );
         console.log('Updated users after rejection:', updated);
@@ -453,18 +456,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (isFirebaseMode) {
       try {
         await firebaseAuthService.updateUserRole(userId, role);
-        setUsers(prev => prev.map(u => 
+        setUsers(prev => prev.map(u =>
           u.id === userId ? { ...u, role } : u
         ));
       } catch (error) {
         console.error('Error updating user role:', error);
       }
     } else {
-      setUsers(prev => prev.map(u => 
+      setUsers(prev => prev.map(u =>
         u.id === userId ? { ...u, role } : u
       ));
     }
   }, [isFirebaseMode]);
+
+  // Computed properties for role checks
+  const isAdmin = useMemo(() => authState.user?.role === 'admin', [authState.user?.role]);
+  const isManager = useMemo(() => authState.user?.role === 'manager' || authState.user?.role === 'admin', [authState.user?.role]);
 
   return (
     <AuthContext.Provider value={{
@@ -478,6 +485,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       rejectUser,
       updateUserRole,
       isFirebaseMode,
+      isAdmin,
+      isManager,
     }}>
       {children}
     </AuthContext.Provider>

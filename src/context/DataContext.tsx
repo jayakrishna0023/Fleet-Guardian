@@ -88,13 +88,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const predMap = new Map<string, PredictionResult[]>();
 
     vehicleList.forEach(vehicle => {
-      if (!vehicle.sensors || !vehicle.sensors.tirePressure) {
+      if (!vehicle.sensors) {
         return;
       }
 
       try {
         const tp = vehicle.sensors.tirePressure;
-        const avgTirePressure = typeof tp === 'object'
+        const avgTirePressure = !tp ? 32 : typeof tp === 'object'
           ? (tp.fl + tp.fr + tp.rl + tp.rr) / 4
           : (tp as number);
 
@@ -154,6 +154,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             totalTrips: 0,
             activeTrips: 0,
           });
+
+          // Load vehicle requests
+          try {
+            const requests = await firestoreService.getVehicleRequests();
+            setVehicleRequests(requests);
+            console.log('[DataContext] Loaded vehicle requests:', requests.length);
+          } catch (error) {
+            console.error('[DataContext] Failed to load vehicle requests:', error);
+          }
 
           // Generate predictions for all vehicles
           updatePredictions(vehicleList);
@@ -237,12 +246,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshData = useCallback(async () => {
     if (isFirebaseMode) {
+      const isAdminOrManager = user?.role === 'admin' || user?.role === 'manager';
+      const vehiclePromise = isAdminOrManager || !user
+        ? firestoreService.getVehicles()
+        : firestoreService.getVehiclesByOwner(user.id);
       const [vehicleList, alertList, stats] = await Promise.all([
-        firestoreService.getVehicles(),
+        vehiclePromise,
         firestoreService.getAlerts(),
         firestoreService.getFleetStats(),
       ]);
-      setVehicles(vehicleList);
+      const uniqueVehicles = Array.from(new Map(vehicleList.map(v => [v.id, v])).values());
+      setVehicles(uniqueVehicles);
       setAlerts(alertList);
       setFleetStats({
         ...stats,
@@ -250,7 +264,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         activeTrips: 0,
       });
       if (isMLReady) {
-        updatePredictions(vehicleList);
+        updatePredictions(uniqueVehicles);
       }
     } else {
       const vehicleList = dataService.getVehicles();
@@ -262,12 +276,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatePredictions(vehicleList);
       }
     }
-  }, [isFirebaseMode, isMLReady, updatePredictions]);
+  }, [isFirebaseMode, isMLReady, updatePredictions, user]);
 
   const addVehicle = useCallback(async (vehicle: Omit<Vehicle, 'id'>): Promise<Vehicle> => {
     console.log('[DataContext] addVehicle called with:', vehicle);
     console.log('[DataContext] Firebase mode:', isFirebaseMode);
-    
+
     if (isFirebaseMode) {
       console.log('[DataContext] Adding vehicle to Firestore...');
       const newVehicle = await firestoreService.addVehicle(vehicle);
@@ -374,19 +388,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     data: VehicleRequest['vehicleData']
   ): Promise<{ success: boolean; message: string }> => {
     try {
-      // Get current user from auth context - we need to use a try-catch since we can't call hooks here
-      let userId = 'unknown';
-      let userName = 'Unknown User';
-      let userRole = 'viewer';
-
-      // Check if there's a user in localStorage (fallback for non-hook access)
-      const storedUser = localStorage.getItem('fleet_user');
-      if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        userId = parsed.id || parsed.uid || 'unknown';
-        userName = parsed.name || parsed.email || 'Unknown User';
-        userRole = parsed.role || 'viewer';
-      }
+      // Get current user from auth context
+      const userId = user?.id || 'unknown';
+      const userName = user?.name || 'Unknown User';
+      const userRole = user?.role || 'viewer';
 
       console.log('[DataContext] submitVehicleRequest - User:', { userId, userName, userRole });
       console.log('[DataContext] submitVehicleRequest - Vehicle Data:', data);
@@ -394,7 +399,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // If admin, add vehicle directly without creating a request
       if (userRole === 'admin') {
         console.log('[DataContext] Admin user - adding vehicle directly');
-        
+
         const initialSensors = data.initialSensors;
         const initialTirePressure = initialSensors?.tirePressure || 32;
 
@@ -481,19 +486,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('[DataContext] Failed to submit vehicle request:', error);
       return { success: false, message: 'Failed to submit request. Please try again.' };
     }
-  }, [isFirebaseMode, addVehicle]);
+  }, [isFirebaseMode, addVehicle, user]);
 
   const approveVehicleRequest = useCallback(async (requestId: string, notes?: string): Promise<void> => {
     console.log('ApproveVehicleRequest called with requestId:', requestId);
     console.log('Current vehicleRequests:', vehicleRequests);
     console.log('IsFirebaseMode:', isFirebaseMode);
-    
+
     const request = vehicleRequests.find(r => r.id === requestId);
     if (!request) {
       console.error('No request found for ID:', requestId);
       return;
     }
-    
+
     console.log('Found request to approve:', request);
 
     try {
@@ -587,7 +592,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('RejectVehicleRequest called with requestId:', requestId);
     console.log('Current vehicleRequests:', vehicleRequests);
     console.log('IsFirebaseMode:', isFirebaseMode);
-    
+
     try {
       if (isFirebaseMode) {
         await firestoreService.updateVehicleRequest(requestId, {

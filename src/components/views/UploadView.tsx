@@ -14,13 +14,21 @@ import {
   FileJson,
   Table,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Car,
+  Plus,
+  ClipboardList,
+  Clock,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { groqService } from '@/services/groqService';
 import { dataService } from '@/services/dataService';
 import { useData } from '@/context/DataContext';
+import { useAuth } from '@/context/AuthContext';
+import { VehicleRegistrationForm } from '@/components/vehicles/VehicleRegistrationForm';
 
 interface UploadedFile {
   id: string;
@@ -33,11 +41,20 @@ interface UploadedFile {
   vehicleData?: any[];
 }
 
+type ViewTab = 'upload' | 'register' | 'requests';
+
 export const UploadView = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [activeTab, setActiveTab] = useState<ViewTab>('upload');
   const { toast } = useToast();
-  const { refreshData } = useData();
+  const { refreshData, vehicleRequests } = useData();
+  const { user, isAdmin } = useAuth();
+
+  // Filter requests for current user (non-admins see only their requests)
+  const userRequests = isAdmin 
+    ? vehicleRequests 
+    : vehicleRequests.filter(r => r.requestedBy === user?.uid || r.requestedBy === user?.id);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -267,16 +284,66 @@ export const UploadView = () => {
             <Upload className="w-8 h-8 text-primary" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold mb-2">Data Upload Center</h2>
+            <h2 className="text-2xl font-bold mb-2">Vehicle Data Center</h2>
             <p className="text-muted-foreground max-w-xl">
-              Import your vehicle telemetry data. Our AI will automatically analyze patterns, 
-              detect anomalies, and provide insights about your fleet.
+              Import vehicle telemetry data via file upload or manually register new vehicles.
+              {!isAdmin && ' Registered vehicles will be sent for admin approval.'}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Upload Area */}
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-border">
+        <button
+          onClick={() => setActiveTab('upload')}
+          className={cn(
+            'px-4 py-3 font-medium flex items-center gap-2 transition-all border-b-2 -mb-px',
+            activeTab === 'upload'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Upload className="w-4 h-4" />
+          File Upload
+        </button>
+        <button
+          onClick={() => setActiveTab('register')}
+          className={cn(
+            'px-4 py-3 font-medium flex items-center gap-2 transition-all border-b-2 -mb-px',
+            activeTab === 'register'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Plus className="w-4 h-4" />
+          Register Vehicle
+        </button>
+        {!isAdmin && (
+          <button
+            onClick={() => setActiveTab('requests')}
+            className={cn(
+              'px-4 py-3 font-medium flex items-center gap-2 transition-all border-b-2 -mb-px',
+              activeTab === 'requests'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <ClipboardList className="w-4 h-4" />
+            My Requests
+            {userRequests.filter(r => r.status === 'pending').length > 0 && (
+              <span className="bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full">
+                {userRequests.filter(r => r.status === 'pending').length}
+              </span>
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'upload' && (
+        <>
+          {/* Upload Area */}
       <div
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -509,6 +576,141 @@ VH-002, Ford, Transit, 2021, 78000, 92, 12.3, Sarah Wilson, warning`}
           </div>
         </section>
       )}
+        </>
+      )}
+
+      {/* Register Vehicle Tab */}
+      {activeTab === 'register' && (
+        <VehicleRegistrationForm 
+          onSuccess={() => {
+            toast({
+              title: isAdmin ? 'Vehicle Added' : 'Registration Submitted',
+              description: isAdmin 
+                ? 'Vehicle has been added to the fleet.' 
+                : 'Your vehicle registration has been submitted for admin approval.',
+            });
+            refreshData();
+          }}
+        />
+      )}
+
+      {/* My Requests Tab (for non-admins) */}
+      {activeTab === 'requests' && !isAdmin && (
+        <div className="space-y-4">
+          <div className="glass-panel p-4">
+            <h3 className="font-semibold mb-2 flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-primary" />
+              Your Vehicle Registration Requests
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Track the status of your submitted vehicle registrations. Admins will review and approve or reject your requests.
+            </p>
+          </div>
+
+          {userRequests.length === 0 ? (
+            <div className="glass-panel p-12 text-center">
+              <Car className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Requests Yet</h3>
+              <p className="text-muted-foreground mb-4">
+                You haven't submitted any vehicle registration requests.
+              </p>
+              <Button onClick={() => setActiveTab('register')} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Register a Vehicle
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {userRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className={cn(
+                    'glass-panel p-4 border-l-4',
+                    request.status === 'pending' && 'border-l-yellow-500',
+                    request.status === 'approved' && 'border-l-green-500',
+                    request.status === 'rejected' && 'border-l-red-500'
+                  )}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        'p-2 rounded-lg',
+                        request.status === 'pending' && 'bg-yellow-500/10',
+                        request.status === 'approved' && 'bg-green-500/10',
+                        request.status === 'rejected' && 'bg-red-500/10'
+                      )}>
+                        <Car className={cn(
+                          'w-5 h-5',
+                          request.status === 'pending' && 'text-yellow-500',
+                          request.status === 'approved' && 'text-green-500',
+                          request.status === 'rejected' && 'text-red-500'
+                        )} />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">{request.vehicleData?.name || 'Vehicle'}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {request.vehicleData?.licensePlate} • {request.vehicleData?.type}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {request.status === 'pending' && (
+                        <span className="flex items-center gap-1 px-2 py-1 bg-yellow-500/10 text-yellow-500 text-xs rounded-full">
+                          <Clock className="w-3 h-3" />
+                          Pending Review
+                        </span>
+                      )}
+                      {request.status === 'approved' && (
+                        <span className="flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-500 text-xs rounded-full">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Approved
+                        </span>
+                      )}
+                      {request.status === 'rejected' && (
+                        <span className="flex items-center gap-1 px-2 py-1 bg-red-500/10 text-red-500 text-xs rounded-full">
+                          <XCircle className="w-3 h-3" />
+                          Rejected
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Make:</span>
+                      <span className="ml-2">{request.vehicleData?.manufacturer || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Model:</span>
+                      <span className="ml-2">{request.vehicleData?.model || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Year:</span>
+                      <span className="ml-2">{request.vehicleData?.year || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Submitted:</span>
+                      <span className="ml-2">
+                        {request.submittedAt 
+                          ? new Date(request.requestedAt).toLocaleDateString() 
+                          : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {request.status === 'rejected' && request.notes && (
+                    <div className="mt-3 p-3 bg-red-500/10 rounded-lg">
+                      <p className="text-sm text-red-400">
+                        <strong>Rejection Reason:</strong> {request.notes}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
-};
+}

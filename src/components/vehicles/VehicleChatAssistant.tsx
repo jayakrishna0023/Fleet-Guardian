@@ -84,10 +84,7 @@ export const VehicleChatAssistant = ({ vehicle }: VehicleChatAssistantProps) => 
         }
     }, [vehicle.id, isInitialized]);
 
-    // Scroll to bottom when messages change
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    // Removed auto-scroll to keep chat static - user can scroll manually
 
     const getVehicleContext = (): string => {
         // Generate fresh ML predictions
