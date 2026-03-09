@@ -1,10 +1,10 @@
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  LayoutDashboard, 
-  Car, 
-  AlertTriangle, 
+import {
+  LayoutDashboard,
+  Car,
+  AlertTriangle,
   Brain,
   FileText,
   Upload,
@@ -20,6 +20,7 @@ import {
   GitCompare,
   Trophy,
   Mail,
+  Settings,
 } from 'lucide-react';
 import { UserRole } from '@/types/auth';
 
@@ -45,6 +46,7 @@ const navItems = [
   { id: 'email-center', label: 'Email Center', icon: Mail },
   { id: 'reports', label: 'Reports', icon: FileText },
   { id: 'upload', label: 'Data Upload', icon: Upload },
+  { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 const adminItems = [
@@ -53,9 +55,9 @@ const adminItems = [
 
 export const Sidebar = ({ activeView, onViewChange, collapsed, onToggle, userRole }: SidebarProps) => {
   const showAdminItems = userRole === 'admin';
-  
+
   return (
-    <motion.aside 
+    <motion.aside
       initial={false}
       animate={{ width: collapsed ? 64 : 256 }}
       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
@@ -63,7 +65,7 @@ export const Sidebar = ({ activeView, onViewChange, collapsed, onToggle, userRol
     >
       {/* Animated background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-accent/5 opacity-50" />
-      
+
       {/* Floating particles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {[...Array(5)].map((_, i) => (
@@ -89,14 +91,14 @@ export const Sidebar = ({ activeView, onViewChange, collapsed, onToggle, userRol
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border relative z-10">
         <AnimatePresence mode="wait">
           {!collapsed && (
-            <motion.div 
+            <motion.div
               className="flex items-center gap-2"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
-              <motion.div 
+              <motion.div
                 className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center relative"
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 15 }}
@@ -137,7 +139,7 @@ export const Sidebar = ({ activeView, onViewChange, collapsed, onToggle, userRol
         {/* Main Navigation Label */}
         <AnimatePresence>
           {!collapsed && (
-            <motion.p 
+            <motion.p
               className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -147,11 +149,11 @@ export const Sidebar = ({ activeView, onViewChange, collapsed, onToggle, userRol
             </motion.p>
           )}
         </AnimatePresence>
-        
+
         {navItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
-          
+
           return (
             <motion.button
               key={item.id}
@@ -181,12 +183,12 @@ export const Sidebar = ({ activeView, onViewChange, collapsed, onToggle, userRol
                   />
                 )}
               </AnimatePresence>
-              
+
               {/* Glow effect for active */}
               {isActive && (
                 <motion.div
                   className="absolute inset-0 rounded-lg"
-                  animate={{ 
+                  animate={{
                     boxShadow: ['0 0 0 0 hsl(var(--primary) / 0)', '0 0 20px 0 hsl(var(--primary) / 0.3)', '0 0 0 0 hsl(var(--primary) / 0)']
                   }}
                   transition={{ duration: 2, repeat: Infinity }}
@@ -200,10 +202,10 @@ export const Sidebar = ({ activeView, onViewChange, collapsed, onToggle, userRol
               >
                 <Icon className={cn('w-5 h-5 flex-shrink-0', isActive && 'text-current')} />
               </motion.div>
-              
+
               <AnimatePresence>
                 {!collapsed && (
-                  <motion.span 
+                  <motion.span
                     className="font-medium relative z-10"
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -222,7 +224,7 @@ export const Sidebar = ({ activeView, onViewChange, collapsed, onToggle, userRol
           <>
             <AnimatePresence>
               {!collapsed && (
-                <motion.p 
+                <motion.p
                   className="px-3 py-2 mt-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -235,7 +237,7 @@ export const Sidebar = ({ activeView, onViewChange, collapsed, onToggle, userRol
             {adminItems.map((item, index) => {
               const Icon = item.icon;
               const isActive = activeView === item.id;
-              
+
               return (
                 <motion.button
                   key={item.id}
@@ -261,7 +263,7 @@ export const Sidebar = ({ activeView, onViewChange, collapsed, onToggle, userRol
                       style={{ backgroundSize: '200% 200%' }}
                     />
                   )}
-                  
+
                   <motion.div
                     className="relative z-10"
                     animate={isActive ? { rotate: [0, 10, -10, 0] } : {}}
@@ -271,7 +273,7 @@ export const Sidebar = ({ activeView, onViewChange, collapsed, onToggle, userRol
                   </motion.div>
                   <AnimatePresence>
                     {!collapsed && (
-                      <motion.span 
+                      <motion.span
                         className="font-medium relative z-10"
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -300,7 +302,7 @@ export const Sidebar = ({ activeView, onViewChange, collapsed, onToggle, userRol
             <motion.div
               className="p-3 rounded-xl bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 border border-primary/20"
               whileHover={{ scale: 1.02 }}
-              animate={{ 
+              animate={{
                 boxShadow: ['0 0 0 0 hsl(var(--primary) / 0)', '0 0 15px 0 hsl(var(--primary) / 0.2)', '0 0 0 0 hsl(var(--primary) / 0)']
               }}
               transition={{ duration: 3, repeat: Infinity }}

@@ -16,6 +16,7 @@ import { ReportsView } from '@/components/views/ReportsView';
 import { UploadView } from '@/components/views/UploadView';
 import { VehicleDetailView } from '@/components/views/VehicleDetailView';
 import { AdminView } from '@/components/views/AdminView';
+import { SettingsView } from '@/components/views/SettingsView';
 import { LoginModal } from '@/components/auth/LoginModal';
 import LuminaHero from '@/components/landing/LuminaHero';
 import LandingPage from '@/components/landing/LandingPage';
@@ -38,6 +39,7 @@ const viewTitles: Record<string, { title: string; subtitle: string }> = {
   reports: { title: 'Reports', subtitle: 'Generate and download fleet reports' },
   upload: { title: 'Data Upload', subtitle: 'Import vehicle trip and sensor data' },
   admin: { title: 'Admin Panel', subtitle: 'Manage users and vehicle approvals' },
+  settings: { title: 'Settings', subtitle: 'Manage your profile, preferences, and security' },
 };
 
 const Index = () => {
@@ -126,6 +128,8 @@ const Index = () => {
         return <ReportsView />;
       case 'upload':
         return <UploadView />;
+      case 'settings':
+        return <SettingsView />;
       case 'admin':
         return <AdminView />;
       default:

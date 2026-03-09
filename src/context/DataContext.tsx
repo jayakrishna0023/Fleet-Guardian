@@ -5,6 +5,7 @@ import { dataService, VehicleTelemetry, FleetStats } from '@/services/dataServic
 import { firestoreService } from '@/services/firestoreService';
 import { isFirebaseConfigured } from '@/config/firebase';
 import { fleetMLEngine, PredictionResult } from '@/services/mlEngine';
+import { anomalyDetector, DetectedAnomaly } from '@/services/anomalyDetection';
 import { useAuth } from './AuthContext';
 
 interface DataContextType {
@@ -37,6 +38,10 @@ interface DataContextType {
   approveVehicleRequest: (requestId: string, notes?: string) => Promise<void>;
   rejectVehicleRequest: (requestId: string, notes?: string) => Promise<void>;
   getPendingRequests: () => VehicleRequest[];
+
+  // Anomaly detection
+  anomalies: DetectedAnomaly[];
+  runAnomalyDetection: () => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -71,6 +76,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [predictions, setPredictions] = useState<Map<string, PredictionResult[]>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [isMLReady, setIsMLReady] = useState(false);
+  const [anomalies, setAnomalies] = useState<DetectedAnomaly[]>([]);
 
   // Get current user from auth context
   const { user } = useAuth();
@@ -639,6 +645,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadVehicleRequests();
   }, [isFirebaseMode]);
 
+  // Auto-run anomaly detection when vehicles change
+  const runAnomalyDetection = useCallback(() => {
+    if (vehicles.length > 0) {
+      try {
+        const detected = anomalyDetector.detectFleetAnomalies(vehicles);
+        setAnomalies(detected);
+      } catch (error) {
+        console.error('Anomaly detection failed:', error);
+      }
+    }
+  }, [vehicles]);
+
+  useEffect(() => {
+    if (!isLoading && vehicles.length > 0) {
+      runAnomalyDetection();
+    }
+  }, [vehicles, isLoading, runAnomalyDetection]);
+
   return (
     <DataContext.Provider
       value={{
@@ -665,6 +689,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         approveVehicleRequest,
         rejectVehicleRequest,
         getPendingRequests,
+        anomalies,
+        runAnomalyDetection,
       }}
     >
       {children}
